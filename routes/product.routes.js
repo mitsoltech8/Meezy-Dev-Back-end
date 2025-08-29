@@ -138,4 +138,43 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Shopify Variant Delete Route using API_AUTH token
+router.delete('/variants/:id', async (req, res) => {
+  const variantId = req.params.id;
+  if (!variantId) return res.status(400).json({ error: 'Variant ID required' });
+
+  const SHOPIFY_STORE = process.env.SHOPIFY_STORE_URL;
+  const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION;
+  const SHOPIFY_API_AUTH = process.env.SHOPIFY_API_AUTH;
+
+  if (!SHOPIFY_STORE || !SHOPIFY_API_AUTH || !SHOPIFY_API_VERSION) {
+    return res.status(500).json({ error: 'Shopify config missing' });
+  }
+
+  try {
+    const response = await fetch(
+      `${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION}/variants/${variantId}.json`,
+      {
+        method: 'DELETE',
+        headers: {
+          'X-Shopify-Access-Token': SHOPIFY_API_AUTH,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const data = await response.text();
+    if (!response.ok) {
+      console.log('Shopify DELETE failed:', data);
+      return res.status(response.status).send(data);
+    }
+
+    res.json({ success: true, message: 'Variant deleted successfully', shopifyResponse: data });
+  } catch (error) {
+    console.error('Variant deletion failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 module.exports = router;
