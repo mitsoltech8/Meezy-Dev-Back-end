@@ -104,6 +104,38 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-
+// Delete a product by id
+router.delete('/:id', async (req, res) => {
+  const productId = req.params.id;
+ 
+  try {
+    console.log(`Deleting product with ID: ${productId}`);
+ 
+    const deleteResponse = await axios.delete(
+      `${SHOPIFY_STORE_URL}/admin/api/${SHOPIFY_API_VERSION}/products/${productId}.json`,
+      { headers: getAuthHeader() }
+    );
+ 
+    console.log('✅ Product deleted successfully!');
+    res.json({
+      success: true,
+      message: 'Product deleted successfully',
+      data: deleteResponse.data || { deleted: true }
+    });
+ 
+  } catch (error) {
+    console.error('❌ Error deleting product:', error.message);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+ 
+    res.status(500).json({
+      error: 'Error deleting product',
+      message: error.message,
+      shopifyError: error.response?.data
+    });
+  }
+});
 
 module.exports = router;
