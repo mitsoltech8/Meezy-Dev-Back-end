@@ -16,56 +16,43 @@ const auth = Buffer.from(`${SHOPIFY_API_KEY}:${SHOPIFY_API_PASSWORD}`).toString(
  
  
 // Get all products from Shopify
+// Get products from YOUR DATABASE (with optional filter)
+// Get products from YOUR DATABASE (with optional filter)
 router.get('/', async (req, res) => {
   try {
-    if (!SHOPIFY_API_KEY || !SHOPIFY_API_PASSWORD) {
-      return res.status(500).json({ error: 'API key or password is missing' });
+    const { all } = req.query; // Use ?all=true to get all products
+    
+    let filter = {};
+    if (all !== 'true') {
+      // Default: only show products that have been updated
+      filter = { changedBy: { $exists: true } };
     }
- 
-    // Correct way to authenticate using API Key and Password for private apps
-    const auth = Buffer.from(`${SHOPIFY_API_KEY}:${SHOPIFY_API_PASSWORD}`).toString('base64');
- 
-    const response = await axios.get(SHOPIFY_ORDER_API_URL, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${auth}`, // Use Basic Auth with API Key and Password
-      },
-    });
- 
-    res.json(response.data); // Return the products data
+    
+    const products = await Product.find(filter);
+    res.json({ products, count: products.length });
   } catch (error) {
-    console.error('Error fetching products from Shopify:', error);
+    console.error('Error fetching products from database:', error);
     res.status(500).json({ error: 'Error fetching products' });
   }
 });
- 
 
 
 // Get single order by ID from Shopify
+// Get a single product by id FROM YOUR DATABASE
 router.get('/:id', async (req, res) => {
+  const shopifyProductId = req.params.id;
+
   try {
-    const orderId = req.params.id;
-    if (!SHOPIFY_API_KEY || !SHOPIFY_API_PASSWORD) {
-      return res.status(500).json({ error: 'API key or password is missing' });
+    const product = await Product.findOne({ shopifyId: shopifyProductId });
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found in database' });
     }
- 
-    const auth = Buffer.from(`${SHOPIFY_API_KEY}:${SHOPIFY_API_PASSWORD}`).toString('base64');
- 
-    const response = await axios.get(`${SHOPIFY_ORDER_API_URL}/${orderId}.json`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${auth}`,
-      },
-    });
- 
-    res.json(response.data); // Return the single order data
+
+    res.json(product);
   } catch (error) {
-    console.error('Error fetching order from Shopify:', error);
-    // More specific error handling
-    if (error.response && error.response.status === 404) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-    res.status(500).json({ error: 'Error fetching order' });
+    console.error('Error fetching product from database:', error);
+    res.status(500).json({ error: 'Error fetching product' });
   }
 });
 
